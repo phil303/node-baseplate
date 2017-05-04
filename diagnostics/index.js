@@ -14,6 +14,9 @@ function generateTraceId() {
   return n;
 }
 
+const LOCAL = Symbol('local');
+const SERVER = Symbol('server');
+const CLIENT = Symbol('client');
 
 /**
  * A span is a diagnostic-based representation of a request or RPC call. Spans
@@ -23,9 +26,9 @@ function generateTraceId() {
 class Span {
   static get types() {
     return {
-      LOCAL: Symbol(),
-      SERVER: Symbol(),
-      CLIENT: Symbol(),
+      LOCAL,
+      SERVER,
+      CLIENT,
     };
   }
 
@@ -48,7 +51,7 @@ class Span {
     this.id = spanId || this.traceId;
     this.parentId = parentId;
 
-    this.type == type;
+    this.type = type;
     this.isLocal = type == Span.types.LOCAL;
 
     this.createObservers = createObservers;
@@ -56,19 +59,6 @@ class Span {
       .map(create => create(this))
       .filter(observer => observer != undefined);
   }
-
-  // wrap(fn) {
-  //   return function(...args) {
-  //     this.start();
-
-  //     try {
-  //       fn(...args);
-  //       this.finish();
-  //     } catch (err) {
-  //       this.finish(err);
-  //     }
-  //   }
-  // }
 
   start() {
     this.observers.forEach(observer => observer.onStart());
@@ -123,4 +113,6 @@ class Span {
   }
 }
 
-module.exports = Span;
+module.exports = {
+  Span,
+}

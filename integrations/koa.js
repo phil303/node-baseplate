@@ -1,6 +1,6 @@
-const diagnostics = require('./diagnostics');
+const diagnostics = require('../diagnostics');
 
-const NOOP = () = {};
+const NOOP = () => {};
 
 function createMiddleware({ createTracer=NOOP, createMetrics=NOOP }={}) {
   return function(ctx, next) {

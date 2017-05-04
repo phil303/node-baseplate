@@ -1,7 +1,7 @@
-const configureTracing = require('./diagnostics/configureTracing');
+const tracing = require('./diagnostics/tracing');
 const koa = require('./integrations/koa');
 
 module.exports = {
   koa,
-  configureTracing,
+  configureTracing: tracing.configureTracing,
 };

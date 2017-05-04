@@ -2,7 +2,7 @@ const os = require('os');
 
 const pick = require('lodash/pick');
 
-const Span = require('./index');
+const Span = require('./index').Span;
 const request = require('../utils/request');
 
 
@@ -20,23 +20,29 @@ const TIME_ANNOTATIONS = {
 const LOCAL_COMPONENT = 'lc';
 
 function configureTracing(options) {
-  const recorder = diagnostics.TracingRecorder(
-    pick(options, ['debug', 'batchInterval', 'maxBatchSize', 'endpoint']),
-  );
+  const {
+    debug,
+    batchInterval,
+    maxBatchSize,
+    endpoint,
+    serviceName,
+    forceSampling=true, // TODO: should be false
+    sampleRate=0.1,
+  } = options;
+
+  const recorder = new TracingRecorder({ debug, batchInterval, maxBatchSize, endpoint });
 
   return function createTracer(span) {
-    if (!options.forceSampling && Math.random() > options.sampleRate) {
-      return null;
+    if (!forceSampling && Math.random() > sampleRate) {
+      return;
     }
 
-    return TracingObserver(Object.assign(
-      pick(options, ['serviceName', 'debug']),
-      { recorder, span },
-    ));
+    return new TracingObserver({ serviceName, recorder, span });
   }
 }
 
 
+// TODO: ensure timestamps and durations are in the correct format
 class TracingRecorder {
   constructor({ endpoint=null, batchInterval=500, maxBatchSize=100, debug=false }={}) {
     this.debug = debug;
@@ -44,13 +50,17 @@ class TracingRecorder {
     this.maxBatchSize = maxBatchSize;
     this.spansQueue = [];
 
-    this.flushSpans();
+    this._flushSpans();
   }
 
-  flushSpans() {
+  send(span) {
+    this.spansQueue.push(span);
+  }
+
+  _flushSpans() {
     const spans = []
-    while (this.spansQueue.length || spans.length < this.maxBatchSize) {
-      spans.append(this.spansQueue.shift());
+    while (this.spansQueue.length && spans.length < this.maxBatchSize) {
+      spans.push(this.spansQueue.shift());
     }
 
     if (spans.length) {
@@ -62,7 +72,7 @@ class TracingRecorder {
       }
     }
 
-    setTimeout(() => this.flushSpans(), this.batchInterval)
+    setTimeout(() => this._flushSpans(), this.batchInterval)
   }
 }
 
@@ -94,8 +104,8 @@ class TracingObserver {
     if (span.isLocal) {
       this.binaryAnnotations.push(this._createBinaryAnnotation(
         LOCAL_COMPONENT,
-        this.span.name,
-      ))
+        this.span.name
+      ));
     }
   }
 
@@ -103,10 +113,8 @@ class TracingObserver {
     this.start = Date.now();
 
     if (!this.span.isLocal) {
-      this.annotations.push(this._createTimeAnnotation(
-        TIME_ANNOTATIONS[span.type].start,
-        this.start,
-      ));
+      const type = TIME_ANNOTATIONS[this.span.type].start;
+      this.annotations.push(this._createTimeAnnotation(type, this.start));
     }
   }
 
@@ -119,10 +127,8 @@ class TracingObserver {
     this.elapsed = end - this.start;
 
     if (!this.span.isLocal) {
-      this.annotations.push(this._createTimeAnnotation(
-        TIME_ANNOTATIONS[span.type].end,
-        end,
-      ));
+      const type = TIME_ANNOTATIONS[this.span.type].end;
+      this.annotations.push(this._createTimeAnnotation(type, end));
     }
 
     this.recorder.send(this._serialize());
@@ -169,4 +175,7 @@ class TracingObserver {
   }
 }
 
-module.exports = configureTracing;
+module.exports = {
+  configureTracing,
+  TracingRecorder,
+}

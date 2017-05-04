@@ -42,7 +42,6 @@ function configureTracing(options) {
 }
 
 
-// TODO: ensure timestamps and durations are in the correct format
 class TracingRecorder {
   constructor({ endpoint=null, batchInterval=500, maxBatchSize=100, debug=false }={}) {
     this.debug = debug;
@@ -110,7 +109,7 @@ class TracingObserver {
   }
 
   onStart() {
-    this.start = Date.now();
+    this.start = Date.now() * 1000;
 
     if (!this.span.isLocal) {
       const type = TIME_ANNOTATIONS[this.span.type].start;
@@ -123,8 +122,8 @@ class TracingObserver {
   }
 
   onFinish(exc=null) {
-    const end = Date.now();
-    this.elapsed = end - this.start;
+    const end = Date.now() * 1000;
+    this.elapsed = (end - this.start) * 1000;
 
     if (!this.span.isLocal) {
       const type = TIME_ANNOTATIONS[this.span.type].end;

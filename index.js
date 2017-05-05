@@ -1,5 +1,5 @@
-const tracing = require('./diagnostics/tracing');
-const koa = require('./integrations/koa');
+const tracing = require('./src/diagnostics/tracing');
+const koa = require('./src/integrations/koa');
 
 module.exports = {
   koa,

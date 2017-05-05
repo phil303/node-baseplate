@@ -32,13 +32,16 @@ function configureTracing(options) {
 
   const recorder = new TracingRecorder({ debug, batchInterval, maxBatchSize, endpoint });
 
-  return function createTracer(span) {
+  function createTracer(span) {
     if (!forceSampling && Math.random() > sampleRate) {
       return;
     }
-
     return new TracingObserver({ serviceName, recorder, span });
   }
+
+  return {
+    createObserver,
+  };
 }
 
 

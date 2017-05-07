@@ -44,25 +44,16 @@ class Metrics {
     this.transport = debug ? new NoopTransport() : new SocketTransport(url);
 
     this.messages = [];
-    this.timerCache = {};
-    this.counterCache = {};
   }
 
   timer(name) {
-    if (!this.timerCache[name]) {
-      const timerName = `${this.namespace}.${punycode.toASCII(name)}`;
-      this.timerCache[name] = new Timer(timerName, msg => this.send(msg));
-    }
-    return this.timerCache[name];
+    const timerName = `${this.namespace}.${punycode.toASCII(name)}`;
+    return new Timer(timerName, msg => this.send(msg));;
   }
 
   counter(name) {
-    this.counterCache[name] = this.counterCache[name];
-    if (!this.counterCache[name]) {
-      const counterName = `${this.namespace}.${punycode.toASCII(name)}`;
-      this.counterCache[name] = new Counter(counterName, msg => this.send(msg));
-    }
-    return this.counterCache[name];
+    const counterName = `${this.namespace}.${punycode.toASCII(name)}`;
+    new Counter(counterName, msg => this.send(msg));
   }
 
   send() {
@@ -135,16 +126,16 @@ class Counter {
 class MetricsObserver {
   constructor(span, name, metrics) {
     this.span = span;
-    this.name = name;
     this.metrics = metrics;
+    this.timer = metrics.timer(name);
   }
 
   onStart() {
-    this.metrics.timer(this.name).start();
+    this.timer.start();
   }
 
   onFinish() {
-    this.metrics.timer(this.name).end();
+    this.timer.end();
     if (this.span.type === Span.SERVER) {
       this.metrics.flush();
     }

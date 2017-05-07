@@ -1,32 +1,29 @@
 const datagram = require('dgram');
+const punycode = require('punycode');
 
 const Span = require('./index').Span;
 
 
-function configureMetrics({ namespace, url, debug }={}) {
-  const metrics = Metrics({ namespace, transport, debug });
-  const batchedMetrics = Metrics({ namespace, transport, debug, shouldBatch: true});
-
+function configureMetrics({ namespace, url=null, debug=false }={}) {
   function createObserver(span) {
-    return MetricsObserver(span, `server.${span.name}`, batchingMetrics);
+    const spanMetrics = Metrics({ namespace, url, debug, shouldBatch: true});
+    return MetricsObserver(span, `server.${span.name}`, spanMetrics);
   }
 
   return {
-    client,
     createObserver,
+    getClient: () => new Metrics({ namespace, url, debug });
   }
 }
 
 
 class SocketTransport {
-  constructor({ url }={}) {
+  constructor(url) {
     this.url = url;
     this.socketClient = datagram.createSocket('udp4');
   }
 
   send(message) {
-    // TODO: does metric need to be ascii encoded? And should I convert it to a
-    // buffer and use that length?
     const { port, hostname } = this.url;
     this.socketClient.send(message, 0, message.length, port, hostname);
   }
@@ -35,16 +32,16 @@ class SocketTransport {
 
 class NoopTransport {
   send(metric) {
-    console.log(metric);
+    console.log("Would have sent the metric: ", metric);
   }
 }
 
 
 class Metrics {
-  constructor({ namespace, transport, debug, shouldBatch=false }={}) {
-    this.namespace = namespace;
+  constructor({ url, namespace, transport, debug, shouldBatch=false }={}) {
+    this.namespace = punycode.toASCII(namespace);
     this.shouldBatch = shouldBatch;
-    this.transport = debug ? new NoopTransport() : new SocketTransport({ url });
+    this.transport = debug ? new NoopTransport() : new SocketTransport(url);
 
     this.messages = [];
     this.timerCache = {};
@@ -53,7 +50,7 @@ class Metrics {
 
   timer(name) {
     if (!this.timerCache[name]) {
-      const timerName = this.namespace + name;
+      const timerName = `${this.namespace}.${punycode.toASCII(name)}`;
       this.timerCache[name] = new Timer(timerName, msg => this.send(msg));
     }
     return this.timerCache[name];
@@ -62,7 +59,7 @@ class Metrics {
   counter(name) {
     this.counterCache[name] = this.counterCache[name];
     if (!this.counterCache[name]) {
-      const counterName = this.namespace + name;
+      const counterName = `${this.namespace}.${punycode.toASCII(name)}`;
       this.counterCache[name] = new Counter(counterName, msg => this.send(msg));
     }
     return this.counterCache[name];
@@ -70,7 +67,7 @@ class Metrics {
 
   send() {
     this.messages.push(message);
-    if (this.shouldBuffer) {
+    if (!this.shouldBatch) {
       this.flush();
     }
   }

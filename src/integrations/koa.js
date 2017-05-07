@@ -1,12 +1,12 @@
 const diagnostics = require('../diagnostics');
 
 
-const NOOP = () => {};
+const NOOP = () => null;
 
 function createMiddleware({ tracer={}, metrics={} }={}) {
   return function(ctx, next) {
     const {
-      client=null: metricsClient,
+      getClient=NOOP: getMetricsClient,
       createObserver=NOOP: createMetricsObserver,
     } = metrics;
 
@@ -18,7 +18,7 @@ function createMiddleware({ tracer={}, metrics={} }={}) {
       name: ctx.url,      // TODO: turn slashes into underscores
       createObservers: [createTracingObserver, createMetricsObserver],
     });
-    ctx.metrics = metricsClient;
+    ctx.metrics = getMetricsClient();
 
     ctx.span.start();
     ctx.span.setTag("http.url", ctx.url);

@@ -9,6 +9,7 @@
   "author": "Phil Aquilina",
   "dependencies": {
     "request": "2.81.0",
-    "lodash": "4.17.4"
+    "lodash": "4.17.4",
+    "punycode": "2.1.0"
   }
 }

@@ -38,6 +38,7 @@ class Span {
       traceId=null,
       parentId=null,
       spanId=null,    // TODO: when is spanId explicitly set?
+      componentName=null,
       createObservers=[],
       type=Span.types.SERVER,
     } = options;
@@ -54,7 +55,6 @@ class Span {
     this.type = type;
     this.isLocal = type == Span.types.LOCAL;
 
-    this.createObservers = createObservers;
     this.observers = createObservers
       .map(create => create(this))
       .filter(observer => observer != undefined);
@@ -98,13 +98,21 @@ class Span {
     this.observers.forEach(observer => observer.onFinish(err));
   }
 
-  createSubSpan(name, isLocal=true) {
+  addObserver(observer) {
+    this.observers.push(observer);
+  }
+
+  createSubSpan(name, componentName, isLocal=true) {
+    if (isLocal && !componentName) {
+      throw new Error('`componentName` needs to be specified for local spans.');
+    }
+
     const span = Span({
       name,
+      componentName,
       type: isLocal ? Span.types.LOCAL : Span.types.CLIENT,
       traceId: this.traceId,
       parentId: this.id,
-      observers: this.createObservers,
     });
 
     this.observers.forEach(observer => observer.onSubSpanCreated(span));

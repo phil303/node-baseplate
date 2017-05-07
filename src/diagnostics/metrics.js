@@ -1,9 +1,14 @@
 const datagram = require('dgram');
 
-function configureMetrics(options) {
-  const client = MetricsClient({ stuff });
+const Span = require('./index').Span;
+
+
+function configureMetrics({ namespace, url, debug }={}) {
+  const metrics = Metrics({ namespace, transport, debug });
+  const batchedMetrics = Metrics({ namespace, transport, debug, shouldBatch: true});
 
   function createObserver(span) {
+    return MetricsObserver(span, `server.${span.name}`, batchingMetrics);
   }
 
   return {
@@ -14,44 +19,66 @@ function configureMetrics(options) {
 
 
 class SocketTransport {
-  // TODO: make Host a proper object
-  constructor(debug, host) {
-    this.debug = debug;
+  constructor({ url }={}) {
+    this.url = url;
     this.socketClient = datagram.createSocket('udp4');
-    this.host = host;
   }
 
-  send(metric) {
+  send(message) {
     // TODO: does metric need to be ascii encoded? And should I convert it to a
     // buffer and use that length?
-    const { port, hostname } = this.host;
-    this.socketClient.send(metric, 0, metric.length, port, hostname, () => {
-      this.socketClient.close();
-    });
+    const { port, hostname } = this.url;
+    this.socketClient.send(message, 0, message.length, port, hostname);
   }
 }
 
 
-class MetricsClient {
-  constructor(namespace, debug) {
-    this.namespace = namespace;
-    this.transport = new SocketTransport(debug);
-    this.debug = debug;
+class NoopTransport {
+  send(metric) {
+    console.log(metric);
+  }
+}
 
+
+class Metrics {
+  constructor({ namespace, transport, debug, shouldBatch=false }={}) {
+    this.namespace = namespace;
+    this.shouldBatch = shouldBatch;
+    this.transport = debug ? new NoopTransport() : new SocketTransport({ url });
+
+    this.messages = [];
     this.timerCache = {};
     this.counterCache = {};
   }
 
   timer(name) {
-    const timerName = this.namespace + name;
-    this.timerCache[name] = this.timerCache[name] || new Timer(timerName);
+    if (!this.timerCache[name]) {
+      const timerName = this.namespace + name;
+      this.timerCache[name] = new Timer(timerName, msg => this.send(msg));
+    }
     return this.timerCache[name];
   }
 
   counter(name) {
-    const counterName = this.namespace + name;
-    this.counterCache[name] = this.counterCache[name] || new Counter(counterName);
+    this.counterCache[name] = this.counterCache[name];
+    if (!this.counterCache[name]) {
+      const counterName = this.namespace + name;
+      this.counterCache[name] = new Counter(counterName, msg => this.send(msg));
+    }
     return this.counterCache[name];
+  }
+
+  send() {
+    this.messages.push(message);
+    if (this.shouldBuffer) {
+      this.flush();
+    }
+  }
+
+  flush() {
+    const message = this.messages.join('\n');
+    this.transport.send(message);
+    this.messages = [];
   }
 }
 
@@ -60,10 +87,11 @@ class MetricsClient {
  * A timer for recording elapsed times.
  */
 class Timer {
-  constructor(namespace) {
+  constructor(namespace, onStop) {
     this.namespace = namespace;
     this.start = null;
     this.end = null;
+    this.onStop = onStop;
   }
 
   start() {
@@ -83,7 +111,7 @@ class Timer {
       throw new Error('Timer already stopped.');
     }
     this.end = Date.now();
-    this.transport.send(`${name}:${this.end - this.start}|ms`);
+    this.onStop(`${name}:${this.end - this.start}|ms`);
   }
 }
 
@@ -92,15 +120,43 @@ class Timer {
  * A counter for counting events over time.
  */
 class Counter {
-  constructor(namespace) {
+  constructor(namespace, onStop) {
     this.namespace = namespace;
+    this.onStop = onStop;
   }
 
   increment(increment=1) {
-    this.transport.send(`${name}:${increment}|c`);
+    this.onStop(`${name}:${increment}|c`);
   }
 
   decrement(decrement=1) {
     this.increment(decrement);
+  }
+}
+
+
+class MetricsObserver {
+  constructor(span, name, metrics) {
+    this.span = span;
+    this.name = name;
+    this.metrics = metrics;
+  }
+
+  onStart() {
+    this.metrics.timer(this.name).start();
+  }
+
+  onFinish() {
+    this.metrics.timer(this.name).end();
+    if (this.span.type === Span.SERVER) {
+      this.metrics.flush();
+    }
+  }
+
+  onSubSpanCreated(span) {
+    const name = span.isLocal ?
+      `${span.componentName}.${span.name}` :
+      `clients.${span.name}`;
+    span.addObserver(new MetricsObserver(span, name, this.metrics));
   }
 }

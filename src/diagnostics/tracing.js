@@ -1,7 +1,5 @@
 const os = require('os');
 
-const pick = require('lodash/pick');
-
 const Span = require('./index').Span;
 const request = require('../utils/request');
 
@@ -26,14 +24,14 @@ function configureTracing(options) {
     maxBatchSize,
     endpoint,
     serviceName,
-    forceSampling=true, // TODO: should be false
+    forceSampling=false,
     sampleRate=0.1,
   } = options;
 
   const recorder = new TracingRecorder({ debug, batchInterval, maxBatchSize, endpoint });
 
   function createTracer(span) {
-    if (!forceSampling && Math.random() > sampleRate) {
+    if (!debug && !forceSampling && Math.random() > sampleRate) {
       return;
     }
     return new TracingObserver({ serviceName, recorder, span });

@@ -2,14 +2,14 @@
   "name": "baseplate",
   "version": "0.1.0",
   "description": "A setup in which to get a node service running",
-  "repository": {
-    "type": "git",
-    "url": "http://foobar.com"
-  },
+  "repository": "git@github.com:phil303/node-baseplate.git",
   "author": "Phil Aquilina",
   "dependencies": {
-    "request": "2.81.0",
     "lodash": "4.17.4",
-    "punycode": "2.1.0"
-  }
+    "punycode": "2.1.0",
+    "request": "2.81.0",
+    "winston": "2.3.1"
+  },
+  "main": "index.js",
+  "license": "MIT"
 }

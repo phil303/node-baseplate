@@ -14,11 +14,16 @@ function createMiddleware({ tracer={}, metrics={} }={}) {
       createObserver=NOOP: createTracingObserver,
     } = tracer;
 
+    const {
+      getLogger=NOOP:
+    } = logger;
+
     ctx.span = new diagnostics.Span({
       name: ctx.url,      // TODO: turn slashes into underscores
       createObservers: [createTracingObserver, createMetricsObserver],
     });
     ctx.metrics = getMetricsClient();
+    ctx.logger = getLogger();
 
     ctx.span.start();
     ctx.span.setTag("http.url", ctx.url);

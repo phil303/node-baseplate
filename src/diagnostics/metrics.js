@@ -32,7 +32,12 @@ class SocketTransport {
 
 class NoopTransport {
   send(metric) {
-    console.log("Would have sent the metric: ", metric);
+    const message = `Would have sent the metric: ${metric}`;
+    try {
+      logger.info(message);
+    } catch (e) {
+      console.log(message);
+    }
   }
 }
 

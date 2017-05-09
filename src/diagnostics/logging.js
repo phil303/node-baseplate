@@ -14,24 +14,39 @@ const LOG_LEVELS = {
     error: 'red',
     warn: 'yellow',
     info: 'green',
-    debug: null,
+    debug: 'blue',
   }
 };
 
-function configureLogging(options={}) {
-  const {
-    debug,
-  } = options;
+function configureLogging({ filePath=null, debug=false, makeGlobal=false }={}) {
+  const transport = !filePath
+    ? new winston.transports.Console(Object.assign({}, { pretyPrint: true, colorize: true }))
+    : new winston.transports.File(
+      Object.assign({}, sharedOptions, {
+        // TODO: filepath
+        colorize: true,
+        handleExceptions: true,
+        humanReadableUnhandledException: true,
+        json: true,
+      })
+    );
 
-  // TODO: unhandled exceptions go where?
   const logger = new winston.Logger({
-    transports: [ new winston.transports.Console() ],
-    levels: LOG_LEVELS,
+    transports: [ transport ],
+    level: debug ? 'debug' : 'info',
+    levels: LOG_LEVELS.levels,
+    colors: LOG_LEVELS.colors,
   });
+
+  if (makeGlobal) {
+    global.logger = logger;
+    logger.info('Setting up `logger` variable as global');
+  }
+
 
   return {
     getLogger: () => logger,
-  };
+  }
 }
 
 module.exports = {

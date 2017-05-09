@@ -18,7 +18,7 @@ const LOG_LEVELS = {
   }
 };
 
-function configureLogging(options) {
+function configureLogging(options={}) {
   const {
     debug,
   } = options;
@@ -33,3 +33,7 @@ function configureLogging(options) {
     getLogger: () => logger,
   };
 }
+
+module.exports = {
+  configureLogging,
+};

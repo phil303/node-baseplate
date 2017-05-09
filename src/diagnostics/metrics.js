@@ -6,13 +6,13 @@ const Span = require('./index').Span;
 
 function configureMetrics({ namespace, url=null, debug=false }={}) {
   function createObserver(span) {
-    const spanMetrics = Metrics({ namespace, url, debug, shouldBatch: true});
-    return MetricsObserver(span, `server.${span.name}`, spanMetrics);
+    const spanMetrics = new Metrics({ namespace, url, debug, shouldBatch: true});
+    return new MetricsObserver(span, `server.${span.name}`, spanMetrics);
   }
 
   return {
     createObserver,
-    getClient: () => new Metrics({ namespace, url, debug });
+    getClient: () => new Metrics({ namespace, url, debug }),
   }
 }
 
@@ -53,10 +53,10 @@ class Metrics {
 
   counter(name) {
     const counterName = `${this.namespace}.${punycode.toASCII(name)}`;
-    new Counter(counterName, msg => this.send(msg));
+    return new Counter(counterName, msg => this.send(msg));
   }
 
-  send() {
+  send(message) {
     this.messages.push(message);
     if (!this.shouldBatch) {
       this.flush();
@@ -77,29 +77,29 @@ class Metrics {
 class Timer {
   constructor(namespace, onStop) {
     this.namespace = namespace;
-    this.start = null;
-    this.end = null;
+    this.timeStart = null;
+    this.timeEnd = null;
     this.onStop = onStop;
   }
 
   start() {
-    if (this.end) {
+    if (this.timeEnd) {
       throw new Error('Timer already started.');
     }
 
-    this.start = Date.now();
+    this.timeStart = Date.now();
   }
 
   stop() {
-    if (!this.start) {
+    if (!this.timeStart) {
       throw new Error('Timer not yet started.');
     }
 
-    if (this.end) {
+    if (this.timeEnd) {
       throw new Error('Timer already stopped.');
     }
-    this.end = Date.now();
-    this.onStop(`${name}:${this.end - this.start}|ms`);
+    this.timeEnd = Date.now();
+    this.onStop(`${this.namespace}:${this.timeEnd - this.timeStart}|ms`);
   }
 }
 
@@ -114,7 +114,7 @@ class Counter {
   }
 
   increment(increment=1) {
-    this.onStop(`${name}:${increment}|c`);
+    this.onStop(`${this.namespace}:${increment}|c`);
   }
 
   decrement(decrement=1) {
@@ -134,9 +134,9 @@ class MetricsObserver {
     this.timer.start();
   }
 
-  onFinish() {
-    this.timer.end();
-    if (this.span.type === Span.SERVER) {
+  onFinish(exc=null) {
+    this.timer.stop();
+    if (this.span.type === Span.types.SERVER) {
       this.metrics.flush();
     }
   }
@@ -147,4 +147,12 @@ class MetricsObserver {
       `clients.${span.name}`;
     span.addObserver(new MetricsObserver(span, name, this.metrics));
   }
+
+  // NOOPs
+  onSetTag() {}
+  onLog() {}
+}
+
+module.exports = {
+  configureMetrics,
 }

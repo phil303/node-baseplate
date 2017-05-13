@@ -12,8 +12,8 @@ module.exports = {
 
 
 // TODO:
-// BASIC:
-//   - thrift istallation and compiler
+// IMMEDIATE:
+//   - thrift installation and compiler
 //   - retry logic
 //   - http client
 //   - configuration validation
@@ -26,3 +26,13 @@ module.exports = {
 //   - source mapping
 //   - cookiecutter
 //   - README/tutorial
+
+// QUESTIONS
+//   - How do spans relate to asynchronous requests?
+//   - How do spans releate to queue based requests?
+
+// QUESTIONS FOR INFRA:
+//   - Can we read from a json config file in production as opposed to
+//   setting ENV variables
+//   - Easier way to deploy a node-baseplate service then what we have now if
+//   it's standardized?

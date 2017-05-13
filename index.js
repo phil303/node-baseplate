@@ -18,6 +18,8 @@ module.exports = {
 //   - http client
 //   - configuration validation
 //   - how does logging to file work in prod
+//      - a: just print to sysout, it gets captured
+//        - q: is there a way to get colored output?
 //   - checking prod metrics actually work
 //
 // MEDIUM TERM:

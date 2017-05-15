@@ -1,9 +1,12 @@
 {
   "name": "baseplate",
   "version": "0.1.0",
-  "description": "A setup in which to get a node service running",
+  "description": "A toolbox for Reddit's Node services",
   "repository": "git@github.com:phil303/node-baseplate.git",
   "author": "Phil Aquilina",
+  "engines": {
+    "node": ">=6.9.2"
+  },
   "dependencies": {
     "lodash": "4.17.4",
     "punycode": "2.1.0",
